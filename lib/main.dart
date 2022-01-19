@@ -1,7 +1,10 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 String text1 = "";
 String text2 = "";
@@ -25,13 +28,15 @@ int getBox(int box) {
 }
 
 Future<void> twoBoxMeme(String abs, String a, String b) async {
+  await dotenv.load(fileName: ".env");
   var headers = {'Cookie': 'claim_key=ZftcrPfMgVpuaxwfEzo_4v_l4yFIEiHm'};
   var request = http.MultipartRequest(
       'POST', Uri.parse('https://api.imgflip.com/caption_image'));
+
   request.fields.addAll({
     'template_id': abs,
-    'username': 'SavageSanta25',
-    'password': 'boneville',
+    'username': dotenv.env['USERNAME'].toString(),
+    'password': dotenv.env['PASSWORD'].toString(),
     'font': 'impact',
     'max_font_size': '15',
     'text0': a,
@@ -53,13 +58,14 @@ Future<void> twoBoxMeme(String abs, String a, String b) async {
 }
 
 Future<void> threeBoxMeme(String abs, String a, String b, String c) async {
+  await dotenv.load(fileName: ".env");
   var headers = {'Cookie': 'claim_key=ZftcrPfMgVpuaxwfEzo_4v_l4yFIEiHm'};
   var request = http.MultipartRequest(
       'POST', Uri.parse('https://api.imgflip.com/caption_image'));
   request.fields.addAll({
     'template_id': abs,
-    'username': 'SavageSanta25',
-    'password': 'boneville',
+    'username': dotenv.env['USERNAME'].toString(),
+    'password': dotenv.env['PASSWORD'].toString(),
     'font': 'impact',
     'max_font_size': '15',
     'boxes[0][text]': a,
@@ -83,13 +89,14 @@ Future<void> threeBoxMeme(String abs, String a, String b, String c) async {
 
 Future<void> fourBoxMeme(
     String abs, String a, String b, String c, String d) async {
+  await dotenv.load(fileName: ".env");
   var headers = {'Cookie': 'claim_key=ZftcrPfMgVpuaxwfEzo_4v_l4yFIEiHm'};
   var request = http.MultipartRequest(
       'POST', Uri.parse('https://api.imgflip.com/caption_image'));
   request.fields.addAll({
     'template_id': abs,
-    'username': 'SavageSanta25',
-    'password': 'boneville',
+    'username': dotenv.env['USERNAME'].toString(),
+    'password': dotenv.env['PASSWORD'].toString(),
     'font': 'impact',
     'max_font_size': '15',
     'boxes[0][text]': a,
@@ -114,13 +121,14 @@ Future<void> fourBoxMeme(
 
 Future<void> fiveBoxMeme(
     String abs, String a, String b, String c, String d, String e) async {
+  await dotenv.load(fileName: ".env");
   var headers = {'Cookie': 'claim_key=ZftcrPfMgVpuaxwfEzo_4v_l4yFIEiHm'};
   var request = http.MultipartRequest(
       'POST', Uri.parse('https://api.imgflip.com/caption_image'));
   request.fields.addAll({
     'template_id': abs,
-    'username': 'SavageSanta25',
-    'password': 'boneville',
+    'username': dotenv.env['USERNAME'].toString(),
+    'password': dotenv.env['PASSWORD'].toString(),
     'font': 'impact',
     'max_font_size': '15',
     'boxes[0][text]': a,
@@ -523,6 +531,7 @@ class _TripleTextState extends State<TripleText> {
       },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     final body = SingleChildScrollView(
@@ -672,6 +681,7 @@ class _QuadTextState extends State<QuadText> {
       },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     const Color color = Color(0xff344966);
@@ -848,6 +858,7 @@ class _PentTextState extends State<PentText> {
       },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     const Color color = Color(0xff344966);
