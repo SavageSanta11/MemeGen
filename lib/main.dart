@@ -1,31 +1,30 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:memegen/collection.dart';
+import 'package:memegen/signin.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-String text1 = "";
-String text2 = "";
-String text3 = "";
-String text4 = "";
-String text5 = "";
+import 'authentication_service.dart';
+import 'firebase_options.dart';
+
+
 String picUrl = "";
+final emailController = TextEditingController();
+final pwdController = TextEditingController();
 
 const Color buttoncoloryes = Color(0xff74A57F);
 const Color color = Color(0xff344966);
 
-int boxno = 0;
+
 String mId = "";
-
-String getId(String id) {
-  return id;
-}
-
-int getBox(int box) {
-  return box;
-}
 
 Future<void> twoBoxMeme(String abs, String a, String b) async {
   await dotenv.load(fileName: ".env");
@@ -152,11 +151,50 @@ Future<void> fiveBoxMeme(
   }
 }
 
-void main() {
-  runApp(MaterialApp(
-    home: HomeScreen(),
-    debugShowCheckedModeBanner: false,
-  ));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        Provider<AuthenticationService>(
+          create: (_) => AuthenticationService(FirebaseAuth.instance),
+        ),
+        StreamProvider(
+          initialData: null,
+          create: (context) =>
+              context.read<AuthenticationService>().authStateChanges,
+        )
+      ],
+      child: MaterialApp(
+        title: 'Memegen',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        home: AuthenticationWrapper(),
+      ),
+    );
+  }
+}
+
+class AuthenticationWrapper extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final firebaseUser = context.watch<User?>();
+
+    if (firebaseUser != null) {
+      return HomeScreen();
+    }
+    return SignInPage();
+  }
 }
 
 class HomeScreen extends StatefulWidget {
@@ -228,20 +266,48 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: <Widget>[
+          Container(
+            alignment: Alignment.topRight,
+            child: RaisedButton(
+              child: new Text("Sign Out"),
+              textColor: Colors.white,
+              color: buttoncoloryes,
+              onPressed: () {
+                context.read<AuthenticationService>().signOut();
+              },
+            ),
+          ),
           alucard,
           welcome,
           lorem,
           SizedBox(height: 20.0),
-          RaisedButton(
-            child: new Text("Create"),
-            textColor: Colors.white,
-            color: buttoncoloryes,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => MemeList()),
-              );
-            },
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              RaisedButton(
+                child: new Text("Create"),
+                textColor: Colors.white,
+                color: buttoncoloryes,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MemeList()),
+                  );
+                },
+              ),
+              RaisedButton(
+                child: new Text("View my collection"),
+                textColor: Colors.white,
+                color: buttoncoloryes,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => CollectionPage()),
+                  );
+                },
+              ),
+            ],
           ),
           SizedBox(height: 40.0),
         ],
@@ -261,8 +327,15 @@ class MemeList extends StatefulWidget {
   _MemeListState createState() => _MemeListState();
 }
 
+List<Widget> textFieldList = [];
+
 class _MemeListState extends State<MemeList> {
   List data = [];
+
+  void _addTextFieldWidget(int i) {
+    textFieldList.add(textField(i));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -312,39 +385,19 @@ class _MemeListState extends State<MemeList> {
                         TextButton(
                           child: const Text('View Meme Template'),
                           onPressed: () {
-                            if (data[index]['box_count'] == 2) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => DoubleText()),
-                              );
-                              mId = data[index]['id'];
-                              picUrl = data[index]['url'];
-                            } else if (data[index]['box_count'] == 3) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => TripleText()),
-                              );
-                              mId = data[index]['id'];
-                              picUrl = data[index]['url'];
-                            } else if (data[index]['box_count'] == 4) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => QuadText()),
-                              );
-                              mId = data[index]['id'];
-                              picUrl = data[index]['url'];
-                            } else if (data[index]['box_count'] == 5) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => PentText()),
-                              );
-                              mId = data[index]['id'];
-                              picUrl = data[index]['url'];
+                            int x = data[index]['box_count'];
+                            for (int i = 0; i < x; i++) {
+                              _addTextFieldWidget(i);
                             }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => DoubleText(
+                                        boxCount: data[index]['box_count'],
+                                      )),
+                            );
+                            mId = data[index]['id'];
+                            picUrl = data[index]['url'];
                           },
                         ),
                       ],
@@ -364,15 +417,47 @@ class _MemeListState extends State<MemeList> {
   }
 }
 
+List<String> textStorage = ["", "", "", "", ""];
+
+Widget textField(int i) {
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Container(
+      width: 500,
+      child: TextFormField(
+        style: TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(
+              color: Colors.white,
+              width: 2.0,
+            ),
+          ),
+          labelStyle: TextStyle(color: Colors.white),
+          prefixIcon: Icon(
+            Icons.add_link,
+            color: Colors.white,
+          ),
+        ),
+        onChanged: (text) {
+          textStorage[i] = text;
+        },
+      ),
+    ),
+  );
+}
+
 class DoubleText extends StatefulWidget {
-  const DoubleText({Key? key}) : super(key: key);
+  final int boxCount;
+  const DoubleText({Key? key, required this.boxCount}) : super(key: key);
 
   @override
   _DoubleTextState createState() => _DoubleTextState();
 }
 
 class _DoubleTextState extends State<DoubleText> {
-  void _showcontent() {
+  final TextEditingController nameController = TextEditingController();
+  void _showFirstDialog() {
     showDialog(
       context: context, barrierDismissible: false, // user must tap button!
 
@@ -399,129 +484,81 @@ class _DoubleTextState extends State<DoubleText> {
                 Navigator.of(context).pop();
               },
             ),
+            new FlatButton(
+              child: new Text('Add to collection'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _showSecondDialog();
+              },
+            ),
           ],
         );
       },
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SingleChildScrollView(
-        child: Container(
-          width: MediaQuery.of(context).size.width,
-          padding: EdgeInsets.all(28.0),
-          decoration: BoxDecoration(
-            color: color,
-          ),
-          child: Column(children: <Widget>[
-            SizedBox(
-                child: Image.network(
-              picUrl,
-              height: 500.0,
-              width: 500.0,
-            )),
-            SizedBox(
-              height: 20.0,
-            ),
-            SizedBox(
-              width: 500.0,
-              child: TextFormField(
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: Colors.white,
-                      width: 2.0,
-                    ),
-                  ),
-                  labelStyle: TextStyle(color: Colors.white),
-                  prefixIcon: Icon(
-                    Icons.add_link,
-                    color: Colors.white,
-                  ),
-                ),
-                onChanged: (text) {
-                  text1 = text;
-                },
-              ),
-            ),
-            SizedBox(
-              height: 20.0,
-            ),
-            SizedBox(
-              width: 500.0,
-              child: TextFormField(
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: Colors.white,
-                      width: 2.0,
-                    ),
-                  ),
-                  labelStyle: TextStyle(color: Colors.white),
-                  prefixIcon: Icon(
-                    Icons.add_link,
-                    color: Colors.white,
-                  ),
-                ),
-                onChanged: (text) {
-                  text2 = text;
-                },
-              ),
-            ),
-            SizedBox(
-              height: 20.0,
-            ),
-            RaisedButton(
-              child: new Text("Create"),
-              textColor: Colors.white,
-              color: buttoncoloryes,
-              onPressed: () {
-                twoBoxMeme(mId, text1, text2);
-                _showcontent();
-              },
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-class TripleText extends StatefulWidget {
-  const TripleText({Key? key}) : super(key: key);
-
-  @override
-  _TripleTextState createState() => _TripleTextState();
-}
-
-class _TripleTextState extends State<TripleText> {
-  void _showcontent() {
+  void _showSecondDialog() {
     showDialog(
       context: context, barrierDismissible: false, // user must tap button!
 
       builder: (BuildContext context) {
         return new AlertDialog(
-          title: new Text('You clicked on'),
+          title: new Text('Your meme is available at:'),
           content: new SingleChildScrollView(
             child: new ListBody(
               children: [
-                new InkWell(
-                    child: new Text(
-                      picUrl,
-                      style: TextStyle(color: Colors.blue),
-                      textAlign: TextAlign.right,
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: "Meme name",
                     ),
-                    onTap: () => launch(picUrl)),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: new InkWell(
+                      child: new Text(
+                        picUrl,
+                        style: TextStyle(color: Colors.blue),
+                        textAlign: TextAlign.right,
+                      ),
+                      onTap: () => launch(picUrl)),
+                ),
               ],
             ),
           ),
           actions: [
             new FlatButton(
-              child: new Text('Ok'),
+              child: new Text('Add'),
+              onPressed: () async {
+                final user = FirebaseAuth.instance.currentUser;
+                final docRef = await FirebaseFirestore.instance
+                    .collection('users')
+                    .where('email', isEqualTo: user?.email)
+                    .get();
+
+                List<QueryDocumentSnapshot<Map<String, dynamic>>> data =
+                    docRef.docs;
+                var value =
+                    data[0]; // there should be only 1 document with that email
+                Map<String, dynamic> originalUrl = value['urls'];
+                originalUrl[nameController.text] = picUrl;
+
+                FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(value['docID'])
+                    .update({
+                  'docID': value['docID'],
+                  'email': user!.email,
+                  'urls': originalUrl
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+            new FlatButton(
+              child: new Text('Cancel'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -534,488 +571,58 @@ class _TripleTextState extends State<TripleText> {
 
   @override
   Widget build(BuildContext context) {
-    final body = SingleChildScrollView(
-        child: Container(
-      width: MediaQuery.of(context).size.width,
-      padding: EdgeInsets.all(28.0),
-      decoration: BoxDecoration(
-        color: color,
+    return new Scaffold(
+      body: new Container(
+        width: MediaQuery.of(context).size.width,
+        padding: EdgeInsets.all(28.0),
+        decoration: BoxDecoration(
+          color: color,
+        ),
+        child: new Column(children: <Widget>[
+          new Container(
+              child: Image.network(
+            picUrl,
+            height: MediaQuery.of(context).size.height * 0.4,
+            width: MediaQuery.of(context).size.width * 0.3,
+          )),
+          new Expanded(
+            child: new SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5,
+              width: 500,
+              child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: widget.boxCount,
+                  itemBuilder: (context, index) {
+                    return textFieldList[index];
+                  }),
+            ),
+          ),
+          RaisedButton(
+            child: new Text("Create"),
+            textColor: Colors.white,
+            color: buttoncoloryes,
+            onPressed: () {
+              
+              
+              if(widget.boxCount==2){
+                  twoBoxMeme(mId, textStorage[0], textStorage[1]);
+              }
+              else if(widget.boxCount == 3){
+                threeBoxMeme(mId, textStorage[0],  textStorage[1], textStorage[2]);
+              }
+              else if(widget.boxCount == 4){
+                fourBoxMeme(mId, textStorage[0],  textStorage[1], textStorage[2], textStorage[3]);
+              }
+              else if(widget.boxCount == 5){
+                fiveBoxMeme(mId, textStorage[0],  textStorage[1], textStorage[2], textStorage[3], textStorage[4]);
+              }
+            
+              _showFirstDialog();
+            },
+          ),
+        ]),
       ),
-      child: Column(children: <Widget>[
-        SizedBox(
-            child: Image.network(
-          picUrl,
-          height: 500.0,
-          width: 500.0,
-        )),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text1 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text2 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text3 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        RaisedButton(
-          child: new Text("Create"),
-          textColor: Colors.white,
-          color: buttoncoloryes,
-          onPressed: () {
-            threeBoxMeme(mId, text1, text2, text3);
-            _showcontent();
-          },
-        ),
-      ]),
-    ));
-    return Scaffold(body: body);
-  }
-}
-
-class QuadText extends StatefulWidget {
-  const QuadText({Key? key}) : super(key: key);
-
-  @override
-  _QuadTextState createState() => _QuadTextState();
-}
-
-class _QuadTextState extends State<QuadText> {
-  void _showcontent() {
-    showDialog(
-      context: context, barrierDismissible: false, // user must tap button!
-
-      builder: (BuildContext context) {
-        return new AlertDialog(
-          title: new Text('You clicked on'),
-          content: new SingleChildScrollView(
-            child: new ListBody(
-              children: [
-                new InkWell(
-                    child: new Text(
-                      picUrl,
-                      style: TextStyle(color: Colors.blue),
-                      textAlign: TextAlign.right,
-                    ),
-                    onTap: () => launch(picUrl)),
-              ],
-            ),
-          ),
-          actions: [
-            new FlatButton(
-              child: new Text('Ok'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
     );
   }
-
-  @override
-  Widget build(BuildContext context) {
-    const Color color = Color(0xff344966);
-
-    final body = SingleChildScrollView(
-        child: Container(
-      width: MediaQuery.of(context).size.width,
-      padding: EdgeInsets.all(28.0),
-      decoration: BoxDecoration(
-        color: color,
-      ),
-      child: Column(children: <Widget>[
-        SizedBox(
-            child: Image.network(
-          picUrl,
-          height: 500.0,
-          width: 500.0,
-        )),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text1 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text1 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text1 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text1 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        RaisedButton(
-          child: new Text("Create"),
-          textColor: Colors.white,
-          color: buttoncoloryes,
-          onPressed: () {
-            fourBoxMeme(mId, text1, text2, text3, text4);
-            _showcontent();
-          },
-        ),
-      ]),
-    ));
-    return Scaffold(body: body);
-  }
 }
 
-class PentText extends StatefulWidget {
-  const PentText({Key? key}) : super(key: key);
-
-  @override
-  _PentTextState createState() => _PentTextState();
-}
-
-class _PentTextState extends State<PentText> {
-  void _showcontent() {
-    showDialog(
-      context: context, barrierDismissible: false, // user must tap button!
-
-      builder: (BuildContext context) {
-        return new AlertDialog(
-          title: new Text('You clicked on'),
-          content: new SingleChildScrollView(
-            child: new ListBody(
-              children: [
-                new InkWell(
-                    child: new Text(
-                      picUrl,
-                      style: TextStyle(color: Colors.blue),
-                      textAlign: TextAlign.right,
-                    ),
-                    onTap: () => launch(picUrl)),
-              ],
-            ),
-          ),
-          actions: [
-            new FlatButton(
-              child: new Text('Ok'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const Color color = Color(0xff344966);
-
-    final body = SingleChildScrollView(
-        child: Container(
-      width: MediaQuery.of(context).size.width,
-      padding: EdgeInsets.all(28.0),
-      decoration: BoxDecoration(
-        color: color,
-      ),
-      child: Column(children: <Widget>[
-        SizedBox(
-            child: Image.network(
-          picUrl,
-          height: 500.0,
-          width: 500.0,
-        )),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text1 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text2 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text3 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text4 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        SizedBox(
-          width: 500.0,
-          child: TextFormField(
-            style: TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Colors.white,
-                  width: 2.0,
-                ),
-              ),
-              labelStyle: TextStyle(color: Colors.white),
-              prefixIcon: Icon(
-                Icons.add_link,
-                color: Colors.white,
-              ),
-            ),
-            onChanged: (text) {
-              text5 = text;
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20.0,
-        ),
-        RaisedButton(
-          child: new Text("Create"),
-          textColor: Colors.white,
-          color: buttoncoloryes,
-          onPressed: () {
-            fiveBoxMeme(mId, text1, text2, text3, text4, text5);
-            _showcontent();
-          },
-        ),
-      ]),
-    ));
-    return Scaffold(body: body);
-  }
-}

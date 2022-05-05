@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "399962425027",
+    "project_id": "memesiginin",
+    "storage_bucket": "memesiginin.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:399962425027:android:f1630b47ade542a4120476",
+        "android_client_info": {
+          "package_name": "com.example.memegen"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "399962425027-dni5r1hu3bku5c7l49rl5vphp3psl0f5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnmRIKm3jhYBWJYlCcSDieKDlygPrTcbc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "399962425027-dni5r1hu3bku5c7l49rl5vphp3psl0f5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
